@@ -1,0 +1,17 @@
+[package]
+name = "oxidation-vk"
+version = "0.1.0"
+edition= "2021"
+rust-version = "1.82.0"
+homepage = "https://github.com/OxidationEngine"
+keywords = ["vulkan", "3D", "graphics"]
+categories = ["rendering::graphics-api"]
+
+[dependencies]
+ash = { workspace = true, features = ["linked", "debug", "std"]  }
+winit = { workspace = true }
+log = { workspace = true }
+nalgebra-glm = { workspace = true }
+vk-mem = { workspace = true }
+ash-window = { workspace = true }
+

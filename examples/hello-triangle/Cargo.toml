@@ -1,0 +1,17 @@
+[package]
+name = "hello-triangle"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82.0"
+publish = false
+
+[[bin]]
+name = "hello-triangle"
+path = "src/main.rs"
+test = false
+bench = false
+doc = false
+
+[dependencies]
+oxidation-engine = { workspace = true }
+oxidation-app = { path = "../../libs/oxidation-app" }

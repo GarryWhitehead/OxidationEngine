@@ -1,0 +1,47 @@
+[workspace.package]
+name = "OxidationEngine"
+version = "0.1.0"
+edition= "2021"
+rust-version = "1.82.0"
+homepage = "https://github.com/OxidationEngine"
+keywords = ["vulkan", "3D", "graphics"]
+categories = ["rendering::graphics-api"]
+
+[workspace]
+members = [
+    "oxidation-engine",
+    "oxidation-vk",
+    "libs/*",
+    "examples/*"
+]
+resolver = "2"
+
+[workspace.dependencies.oxidation-engine]
+version = "0.1.0"
+path = "oxidation-engine"
+
+[workspace.dependencies.oxidation-vk]
+version = "0.1.0"
+path = "oxidation-vk"
+
+[workspace.dependencies.oxidation-utils]
+version = "0.1.0"
+path = "./libs/oxidation-utils"
+
+[workspace.dependencies.oxidation-app]
+version = "0.1.0"
+path = "./libs/oxidation-app"
+
+[workspace.dependencies]
+ash = "0.38.0"
+winit = "0.30.11"
+log = "0.4"
+nalgebra-glm = "0.3"
+ash-window = "0.13.0"
+vk-mem = "0.4.0"
+env_logger = "0.11.8"
+
+#[[example]]
+#name = "hello-triangle"
+#path = "examples/hello-triangle/src/main.rs"
+

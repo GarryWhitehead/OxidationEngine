@@ -27,7 +27,7 @@ impl<T> Handle<T> {
     /// Create a new handle for the specified type.
     pub fn new(id: usize) -> Handle<T> {
         Self {
-            id: id,
+            id,
             phantom_data: PhantomData,
         }
     }

@@ -173,7 +173,7 @@ fn create_queue_indices(
     queue_family_idx: u32,
 ) -> (u32, u32, u32) {
     let graphics_queue_idx = queue_family_idx;
-    // This could potentially get overriden if there is a separate queue on the device.
+    // This could potentially get over-ridden if there is a separate queue on the device.
     let mut compute_queue_idx = graphics_queue_idx;
     // TODO: Check whether the device has a separate presentation queue.
     let present_queue_idx = graphics_queue_idx;

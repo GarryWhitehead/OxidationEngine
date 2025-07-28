@@ -92,7 +92,7 @@ impl ApplicationHandler for App {
                 engine.set_current_swapchain(handle);
             }
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Error: {err:?}");
             }
         }
 

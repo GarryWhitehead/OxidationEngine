@@ -11,6 +11,7 @@ pub use std::{error::Error, rc::Rc};
 use winit::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use winit::window::Window;
 
+#[allow(dead_code)]
 /// A Vulkan driver which encompasses the Vk instance and device context
 /// along with all resource required to "drive" the vulkan backend
 /// rendering.
@@ -19,8 +20,8 @@ use winit::window::Window;
 /// from the engine side.
 ///
 /// # Safety
-/// The driver itself is to be used on a single thread though its
-/// associated caches (i.e. pipeline and descriptor) are designed to be
+/// The driver itself is to be used on a single thread, though its
+/// associated caches (i.e., pipeline and descriptor) are designed to be
 /// used across multiple threads.
 ///
 /// # Examples
@@ -31,7 +32,7 @@ use winit::window::Window;
 /// use winit::{window::WindowAttributes, event_loop};
 /// use oxidation_vk as ovk;
 ///
-/// let event_loop = EventLoop::new().unwrap();
+/// let event_loop = event_loop::EventLoop::new().unwrap();
 /// let window = event_loop.create_window(WindowAttributes::default()).unwrap();
 /// let win_extensions = Vec::new();
 /// let driver = ovk::Driver::new(win_extensions, &window);
@@ -84,12 +85,12 @@ impl Driver {
         let image_ready_signal = unsafe { device.device.create_semaphore(&semaphore_info, None)? };
 
         Ok(Self {
-            device: device,
-            instance: instance,
-            vma_allocator: vma_allocator,
-            image_ready_signal: image_ready_signal,
+            device,
+            instance,
+            vma_allocator,
+            image_ready_signal,
             current_image_index: 0,
-            surface: surface,
+            surface,
         })
     }
 }

@@ -8,7 +8,7 @@ keywords = ["vulkan", "3D", "graphics"]
 categories = ["rendering::graphics-api"]
 
 [dependencies]
-ash = { workspace = true, features = ["linked", "debug", "std"]  }
+ash = { workspace = true, features = ["loaded", "debug", "std"]  }
 winit = { workspace = true }
 log = { workspace = true }
 nalgebra-glm = { workspace = true }

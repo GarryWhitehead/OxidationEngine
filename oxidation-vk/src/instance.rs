@@ -1,8 +1,4 @@
-use ash::{
-    ext::debug_utils,
-    khr::{surface, swapchain},
-    vk, Entry,
-};
+use ash::{ext::debug_utils, vk, Entry};
 use log::{info, warn};
 use std::ffi::{c_char, CStr};
 use std::{borrow::Cow, error::Error};
@@ -21,7 +17,7 @@ impl ContextInstance {
         // Layer properties.
         let mut layer_extensions = Vec::new();
         let layer_properties = unsafe { entry.enumerate_instance_layer_properties().unwrap() };
-        println!("layer_properties: {:?}", layer_properties);
+        println!("layer_properties: {layer_properties:?}");
         #[cfg(debug_assertions)]
         {
             let res = find_layer_properties(c"VK_LAYER_KHRONOS_validation", &layer_properties);
@@ -58,8 +54,8 @@ impl ContextInstance {
 
         let vk_instance = unsafe { entry.create_instance(&create_info, None)? };
 
-        let mut debug_callback: vk::DebugUtilsMessengerEXT = Default::default();
-        let mut debug_loader: Option<debug_utils::Instance> = None;
+        let debug_callback: vk::DebugUtilsMessengerEXT;
+        let debug_loader: Option<debug_utils::Instance>;
 
         #[cfg(debug_assertions)]
         {
@@ -80,12 +76,17 @@ impl ContextInstance {
             debug_callback = unsafe { dl.create_debug_utils_messenger(&debug_info, None)? };
             debug_loader = Some(dl);
         }
+        #[cfg(not(debug_assertions))]
+        {
+            debug_loader = None;
+            debug_callback = Default::default();
+        }
 
         Ok(Self {
-            entry: entry,
+            entry,
             instance: vk_instance,
-            debug_loader: debug_loader,
-            debug_callback: debug_callback,
+            debug_loader,
+            debug_callback,
         })
     }
 }
@@ -115,23 +116,22 @@ unsafe extern "system" fn vulkan_debug_callback(
     vk::FALSE
 }
 
-fn find_layer_properties(layer_name: &CStr, layer_props: &Vec<vk::LayerProperties>) -> bool {
+fn find_layer_properties(layer_name: &CStr, layer_props: &[vk::LayerProperties]) -> bool {
     layer_props.iter().any(|layer| {
         let tmp = layer_name.to_string_lossy();
         tmp == unsafe { CStr::from_ptr(layer.layer_name.as_ptr()).to_string_lossy() }
     })
 }
 
-fn find_extension(ext_name: &CStr, extensions: &Vec<vk::ExtensionProperties>) -> bool {
+fn find_extension(ext_name: &CStr, extensions: &[vk::ExtensionProperties]) -> bool {
     extensions.iter().any(|layer| {
         let tmp = ext_name.to_string_lossy();
-        let layer_name = unsafe { CStr::from_ptr(layer.extension_name.as_ptr()).to_string_lossy() };
         tmp == unsafe { CStr::from_ptr(layer.extension_name.as_ptr()).to_string_lossy() }
     })
 }
 
 fn create_extensions(
-    extensions: &Vec<vk::ExtensionProperties>,
+    extensions: &[vk::ExtensionProperties],
     required_extensions: Vec<*const c_char>,
 ) -> Result<Vec<*const c_char>, Box<dyn Error>> {
     let mut out: Vec<*const c_char> = Vec::new();
@@ -160,7 +160,7 @@ fn create_extensions(
     if find_extension(ash::khr::external_semaphore_capabilities::NAME, extensions) {
         out.push(ash::khr::external_semaphore_capabilities::NAME.as_ptr());
     }
-    if (find_extension(ash::khr::multiview::NAME, extensions)) {
+    if find_extension(ash::khr::multiview::NAME, extensions) {
         out.push(ash::khr::multiview::NAME.as_ptr());
     }
 
@@ -178,12 +178,9 @@ fn create_extensions(
 
 impl Drop for ContextInstance {
     fn drop(&mut self) {
-        match &self.debug_loader {
-            Some(debug_loader) => unsafe {
-                debug_loader.destroy_debug_utils_messenger(self.debug_callback, None)
-            },
-            None => {}
-        };
+        if let Some(debug_loader) = &self.debug_loader {
+            unsafe { debug_loader.destroy_debug_utils_messenger(self.debug_callback, None) };
+        }
         unsafe {
             self.instance.destroy_instance(None);
         }

@@ -1,0 +1,16 @@
+name: formatting Check
+on: [push, pull_request]
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run fmt check
+      run: cargo fmt --check
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run typos
+      uses: crate-ci/typos@master
+

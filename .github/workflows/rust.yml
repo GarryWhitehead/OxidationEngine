@@ -1,0 +1,25 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]  
+    runs-on: ${{ matrix.os }}
+    env:
+      common_args: --color always --verbose
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run clippy
+      run: cargo clippy ${{ env.common_args }} -- -Dwarnings
+      shell: bash
+    - name: Build examples
+      run: cargo build ${{ env.common_args }} --bins
+      shell: bash

@@ -20,11 +20,11 @@ impl ContextDevice {
         c_instance: &ContextInstance,
         surface: &vk::SurfaceKHR,
     ) -> Result<Self, Box<dyn Error>> {
-        let (phys_device, queue_family_idx) =
-            find_physical_device(&c_instance.instance, &c_instance.entry, &surface)?;
+        let (physical_device, queue_family_idx) =
+            find_physical_device(&c_instance.instance, &c_instance.entry, surface)?;
 
         let (graphics_queue_idx, compute_queue_idx, present_queue_idx) =
-            create_queue_indices(&c_instance.instance, phys_device, queue_family_idx);
+            create_queue_indices(&c_instance.instance, physical_device, queue_family_idx);
 
         let queue_priority = [1.0];
         let mut queue_infos: Vec<vk::DeviceQueueCreateInfo> = Vec::new();
@@ -54,8 +54,16 @@ impl ContextDevice {
             )
         }
 
-        let mut robust_info = vk::PhysicalDeviceImageRobustnessFeatures::default();
-        robust_info.robust_image_access = vk::TRUE;
+        let phys_features = unsafe {
+            c_instance
+                .instance
+                .get_physical_device_features(physical_device)
+        };
+
+        let mut robust_info = vk::PhysicalDeviceImageRobustnessFeatures {
+            robust_image_access: vk::TRUE,
+            ..Default::default()
+        };
         let mut features12 = vk::PhysicalDeviceVulkan12Features::default()
             .draw_indirect_count(true)
             .shader_sampled_image_array_non_uniform_indexing(true)
@@ -68,28 +76,24 @@ impl ContextDevice {
             .multiview(true)
             .multiview_geometry_shader(true)
             .multiview_tessellation_shader(true);
-        let required_features = vk::PhysicalDeviceFeatures2::default()
+
+        let phys_dev_features = vk::PhysicalDeviceFeatures {
+            texture_compression_etc2: phys_features.texture_compression_etc2,
+            texture_compression_bc: phys_features.texture_compression_bc,
+            sampler_anisotropy: phys_features.sampler_anisotropy,
+            tessellation_shader: phys_features.tessellation_shader,
+            shader_storage_image_extended_formats: phys_features
+                .shader_storage_image_extended_formats,
+            multi_draw_indirect: phys_features.multi_draw_indirect,
+            multi_viewport: phys_features.multi_viewport,
+            depth_clamp: phys_features.depth_clamp,
+            ..Default::default()
+        };
+        let mut required_features = vk::PhysicalDeviceFeatures2::default()
+            .features(phys_dev_features)
             .push_next(&mut multi_view_info)
             .push_next(&mut features12)
             .push_next(&mut robust_info);
-
-        let phys_features = unsafe {
-            c_instance
-                .instance
-                .get_physical_device_features(phys_device)
-        };
-        required_features
-            .features
-            .texture_compression_etc2(phys_features.texture_compression_etc2 == vk::TRUE)
-            .texture_compression_bc(phys_features.texture_compression_bc == vk::TRUE)
-            .sampler_anisotropy(phys_features.sampler_anisotropy == vk::TRUE)
-            .tessellation_shader(phys_features.tessellation_shader == vk::TRUE)
-            .shader_storage_image_extended_formats(
-                phys_features.shader_storage_image_extended_formats == vk::TRUE,
-            )
-            .multi_draw_indirect(phys_features.multi_draw_indirect == vk::TRUE)
-            .multi_viewport(phys_features.multi_viewport == vk::TRUE)
-            .depth_clamp(phys_features.depth_clamp == vk::TRUE);
 
         let device_extension_names_raw = [
             swapchain::NAME.as_ptr(),
@@ -100,12 +104,13 @@ impl ContextDevice {
         let device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_infos)
             .enabled_features(&phys_features)
-            .enabled_extension_names(&device_extension_names_raw);
+            .enabled_extension_names(&device_extension_names_raw)
+            .push_next(&mut required_features);
 
         let device = unsafe {
             c_instance
                 .instance
-                .create_device(phys_device, &device_create_info, None)?
+                .create_device(physical_device, &device_create_info, None)?
         };
 
         let graphics_queue = unsafe { device.get_device_queue(graphics_queue_idx, 0) };
@@ -113,14 +118,14 @@ impl ContextDevice {
         let present_queue = unsafe { device.get_device_queue(present_queue_idx, 0) };
 
         Ok(Self {
-            device: device,
-            physical_device: phys_device,
-            graphics_queue_idx: graphics_queue_idx,
-            compute_queue_idx: compute_queue_idx,
-            present_queue_idx: present_queue_idx,
-            graphics_queue: graphics_queue,
-            compute_queue: compute_queue,
-            present_queue: present_queue,
+            device,
+            physical_device,
+            graphics_queue_idx,
+            compute_queue_idx,
+            present_queue_idx,
+            graphics_queue,
+            compute_queue,
+            present_queue,
         })
     }
 }
@@ -137,7 +142,7 @@ fn find_physical_device(
     };
 
     // Find an appropriate physical device.
-    let surface_loader = surface::Instance::new(&entry, &instance);
+    let surface_loader = surface::Instance::new(entry, instance);
     let (phys_device, queue_family_idx) = phys_devices
         .iter()
         .find_map(|phys_device| unsafe {
@@ -173,7 +178,7 @@ fn create_queue_indices(
     queue_family_idx: u32,
 ) -> (u32, u32, u32) {
     let graphics_queue_idx = queue_family_idx;
-    // This could potentially get overriden if there is a separate queue on the device.
+    // This could potentially get over-ridden if there is a separate queue on the device.
     let mut compute_queue_idx = graphics_queue_idx;
     // TODO: Check whether the device has a separate presentation queue.
     let present_queue_idx = graphics_queue_idx;

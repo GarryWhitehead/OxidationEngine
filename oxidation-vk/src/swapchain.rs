@@ -32,7 +32,7 @@ impl Swapchain {
     /// Find a suitbale surface for rendering to.
     /// The ideal format is a normalised pixel 8-bit BRGA format and a linear SRGB colour space.
     /// If this can't be fulfilled by the device, then the first option in chosen.
-    fn find_surface_format(surface_formats: &Vec<vk::SurfaceFormatKHR>) -> vk::SurfaceFormatKHR {
+    fn find_surface_format(surface_formats: &[vk::SurfaceFormatKHR]) -> vk::SurfaceFormatKHR {
         if surface_formats[0].format == vk::Format::UNDEFINED {
             return vk::SurfaceFormatKHR {
                 format: vk::Format::B8G8R8A8_UNORM,
@@ -51,9 +51,9 @@ impl Swapchain {
 
     /// Find a suitable presentation mode. The order of preference is:
     /// 1. Mailbox -> 2. FIFO -> 3. Immediate
-    fn find_present_mode(present_modes: &Vec<vk::PresentModeKHR>) -> vk::PresentModeKHR {
+    fn find_present_mode(present_modes: &[vk::PresentModeKHR]) -> vk::PresentModeKHR {
         if present_modes.contains(&vk::PresentModeKHR::MAILBOX) {
-            return vk::PresentModeKHR::MAILBOX;
+            vk::PresentModeKHR::MAILBOX
         } else if present_modes.contains(&vk::PresentModeKHR::FIFO) {
             return vk::PresentModeKHR::FIFO;
         } else {
@@ -137,9 +137,9 @@ impl Swapchain {
 
         Ok(Self {
             instance: swapchain,
-            extents: extents,
-            surface_format: surface_format,
-            swapchain_loader: swapchain_loader,
+            extents,
+            surface_format,
+            swapchain_loader,
         })
     }
 }

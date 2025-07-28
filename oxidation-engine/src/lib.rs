@@ -14,7 +14,8 @@ type SwapchainHandle = handle::Handle<Swapchain>;
 ///
 /// Create engine with swapchain
 /// ```
-/// let engine = oxidation_engine::Engine::new(_);
+/// let driver = std::rc::Rc::new(oxidation_vk::Driver::new()?);
+/// let mut engine = oxidation_engine::Engine::new(driver);
 /// let win_size = (1980,1080);
 /// let handle = engine.create_swapchain(win_size.0, win_size.1);
 /// ```
@@ -30,11 +31,11 @@ pub struct Engine {
 impl Engine {
     /// Create a new engine instance.
     pub fn new(driver: Rc<Driver>) -> Self {
-        let mut swapchains = Vec::new();
+        let swapchains = Vec::new();
 
         Self {
-            driver: driver,
-            swapchains: swapchains,
+            driver,
+            swapchains,
             current_swapchain: Default::default(),
         }
     }

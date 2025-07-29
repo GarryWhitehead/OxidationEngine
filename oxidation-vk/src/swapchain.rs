@@ -1,5 +1,6 @@
 use crate::device::ContextDevice;
 use crate::instance::ContextInstance;
+use crate::texture::{Texture, TextureInfo};
 
 use ash::{
     khr::{surface, swapchain},
@@ -7,7 +8,7 @@ use ash::{
 };
 use std::error::Error;
 
-/// A swapchain is Vulkans abstract object which deals with rendering
+/// A swapchain is Vulkan's abstract object that deals with rendering
 /// an image to the surface. The swapchain handles the images which will
 /// be rendered to based upon the current index - usual setup gives
 /// either double- or triple-buffered scenarios.
@@ -18,7 +19,7 @@ use std::error::Error;
 /// let instance = oxidation_vk::instance::ContextInstance::new();
 /// let device = oxidation_vk::device::ContextDevice::new();
 /// let win_size = (1980, 1080);
-/// let swapchain = oxidation_vk::swapchain::Swapchain::new(instance, device, _, win_size.0, win_size.1);
+/// let swapchain = oxidation_vk::swapchain::Swapchain::new(&instance, &device, _, win_size.0, win_size.1);
 /// ```
 ///
 pub struct Swapchain {
@@ -26,6 +27,8 @@ pub struct Swapchain {
     pub extents: vk::Extent2D,
     pub surface_format: vk::SurfaceFormatKHR,
     pub swapchain_loader: swapchain::Device,
+    pub images: Vec<vk::Image>,
+    pub image_views: Vec<vk::ImageView>,
 }
 
 impl Swapchain {
@@ -135,12 +138,44 @@ impl Swapchain {
         let swapchain_loader = swapchain::Device::new(&instance.instance, &device.device);
         let swapchain = unsafe { swapchain_loader.create_swapchain(&create_info, None)? };
 
+        // Create the image views required to render into the swapchain images.
+        let images = unsafe { swapchain_loader.get_swapchain_images(swapchain).unwrap() };
+        let image_views = Self::create_image_views(
+            &images,
+            extents.width,
+            extents.height,
+            surface_format.format,
+            &device.device,
+        );
+
         Ok(Self {
             instance: swapchain,
             extents,
             surface_format,
             swapchain_loader,
+            images,
+            image_views,
         })
+    }
+
+    fn create_image_views(
+        images: &[vk::Image],
+        width: u32,
+        height: u32,
+        format: vk::Format,
+        device: &ash::Device,
+    ) -> Vec<vk::ImageView> {
+        let mut views = Vec::new();
+        let info = TextureInfo {
+            width,
+            height,
+            format,
+            ..Default::default()
+        };
+        for image in images {
+            views.push(Texture::create_image_view(image, &info, 0, 1, device));
+        }
+        views
     }
 }
 

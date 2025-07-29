@@ -1,10 +1,14 @@
+pub mod backend;
 pub mod device;
 pub mod instance;
+mod sampler_cache;
 pub mod swapchain;
+pub mod texture;
 
 use crate::device::ContextDevice;
 use crate::instance::ContextInstance;
 
+use crate::sampler_cache::SamplerCache;
 pub use ash::{vk, Entry, Instance};
 use std::ffi::c_char;
 pub use std::{error::Error, rc::Rc};
@@ -48,6 +52,7 @@ pub struct Driver {
     current_image_index: u32,
     /// The window surface which is associated with this driver context.
     pub surface: vk::SurfaceKHR,
+    pub sampler_cache: sampler_cache::SamplerCache,
 }
 
 impl Driver {
@@ -83,6 +88,7 @@ impl Driver {
 
         let semaphore_info = vk::SemaphoreCreateInfo::default();
         let image_ready_signal = unsafe { device.device.create_semaphore(&semaphore_info, None)? };
+        let sampler_cache = SamplerCache::new(&device.device);
 
         Ok(Self {
             device,
@@ -91,7 +97,30 @@ impl Driver {
             image_ready_signal,
             current_image_index: 0,
             surface,
+            sampler_cache,
         })
+    }
+
+    pub fn is_depth_format(format: &vk::Format) -> bool {
+        let depth_formats = [
+            vk::Format::D16_UNORM,
+            vk::Format::D32_SFLOAT,
+            vk::Format::D32_SFLOAT_S8_UINT,
+            vk::Format::D24_UNORM_S8_UINT,
+            vk::Format::D16_UNORM_S8_UINT,
+            vk::Format::X8_D24_UNORM_PACK32,
+        ];
+        depth_formats.contains(format)
+    }
+
+    pub fn is_stencil_format(format: &vk::Format) -> bool {
+        let stencil_formats = [
+            vk::Format::S8_UINT,
+            vk::Format::D16_UNORM_S8_UINT,
+            vk::Format::D24_UNORM_S8_UINT,
+            vk::Format::D32_SFLOAT_S8_UINT,
+        ];
+        stencil_formats.contains(format)
     }
 }
 

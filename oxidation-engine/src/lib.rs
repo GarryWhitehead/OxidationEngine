@@ -1,5 +1,5 @@
 use oxidation_utils::handle;
-use oxidation_vk::{swapchain::Swapchain, Driver};
+use oxidation_vk::{Driver, swapchain::Swapchain};
 use std::{error::Error, rc::Rc};
 
 type SwapchainHandle = handle::Handle<Swapchain>;

@@ -1,5 +1,5 @@
 use ash::khr::{surface, swapchain};
-use ash::{vk, Entry, Instance};
+use ash::{Entry, Instance, vk};
 use std::error::Error;
 
 use crate::instance::ContextInstance;
@@ -128,6 +128,10 @@ impl ContextDevice {
             present_queue,
         })
     }
+
+    pub fn destroy(&mut self) {
+        unsafe { self.device.destroy_device(None) };
+    }
 }
 
 fn find_physical_device(
@@ -195,10 +199,4 @@ fn create_queue_indices(
     }
 
     (graphics_queue_idx, compute_queue_idx, present_queue_idx)
-}
-
-impl Drop for ContextDevice {
-    fn drop(&mut self) {
-        unsafe { self.device.destroy_device(None) };
-    }
 }

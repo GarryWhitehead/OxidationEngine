@@ -1,6 +1,6 @@
-use ash::{ext::debug_utils, vk, Entry};
+use ash::{Entry, ext::debug_utils, vk};
 use log::{info, warn};
-use std::ffi::{c_char, CStr};
+use std::ffi::{CStr, c_char};
 use std::{borrow::Cow, error::Error};
 
 pub struct ContextInstance {
@@ -89,6 +89,15 @@ impl ContextInstance {
             debug_callback,
         })
     }
+
+    pub fn destroy(&mut self) {
+        if let Some(debug_loader) = &self.debug_loader {
+            unsafe { debug_loader.destroy_debug_utils_messenger(self.debug_callback, None) };
+        }
+        unsafe {
+            self.instance.destroy_instance(None);
+        }
+    }
 }
 
 unsafe extern "system" fn vulkan_debug_callback(
@@ -97,19 +106,19 @@ unsafe extern "system" fn vulkan_debug_callback(
     p_callback_data: *const vk::DebugUtilsMessengerCallbackDataEXT<'_>,
     _user_data: *mut std::os::raw::c_void,
 ) -> vk::Bool32 {
-    let cb_data = *p_callback_data;
+    let cb_data = unsafe { *p_callback_data };
     let msg_id = cb_data.message_id_number;
 
     let msg_id_name = if cb_data.p_message_id_name.is_null() {
         Cow::from("")
     } else {
-        CStr::from_ptr(cb_data.p_message_id_name).to_string_lossy()
+        unsafe { CStr::from_ptr(cb_data.p_message_id_name).to_string_lossy() }
     };
 
     let msg = if cb_data.p_message.is_null() {
         Cow::from("")
     } else {
-        CStr::from_ptr(cb_data.p_message).to_string_lossy()
+        unsafe { CStr::from_ptr(cb_data.p_message).to_string_lossy() }
     };
 
     info!("{message_severity:?}\n{message_type:?} [{msg_id_name} ({msg_id})] : {msg}\n");
@@ -142,7 +151,7 @@ fn create_extensions(
             false => {
                 return Err(Box::from(
                     "Required extension name not found for device instance.",
-                ))
+                ));
             }
             true => out.push(ext_name),
         };
@@ -174,15 +183,4 @@ fn create_extensions(
     }
 
     Ok(out)
-}
-
-impl Drop for ContextInstance {
-    fn drop(&mut self) {
-        if let Some(debug_loader) = &self.debug_loader {
-            unsafe { debug_loader.destroy_debug_utils_messenger(self.debug_callback, None) };
-        }
-        unsafe {
-            self.instance.destroy_instance(None);
-        }
-    }
 }

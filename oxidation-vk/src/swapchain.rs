@@ -177,10 +177,8 @@ impl Swapchain {
         }
         views
     }
-}
 
-impl Drop for Swapchain {
-    fn drop(&mut self) {
+    pub fn destroy(&mut self) {
         unsafe { self.swapchain_loader.destroy_swapchain(self.instance, None) };
     }
 }

@@ -1,16 +1,21 @@
 pub mod backend;
+pub mod commands;
 pub mod device;
 pub mod instance;
 mod sampler_cache;
+pub mod staging_pool;
 pub mod swapchain;
 pub mod texture;
 
+use crate::commands::Commands;
 use crate::device::ContextDevice;
 use crate::instance::ContextInstance;
+use crate::staging_pool::StagingPool;
 
 use crate::sampler_cache::SamplerCache;
-pub use ash::{vk, Entry, Instance};
+pub use ash::{Entry, Instance, vk};
 use std::ffi::c_char;
+use std::mem::ManuallyDrop;
 pub use std::{error::Error, rc::Rc};
 use winit::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use winit::window::Window;
@@ -45,7 +50,7 @@ use winit::window::Window;
 pub struct Driver {
     pub device: ContextDevice,
     pub instance: ContextInstance,
-    vma_allocator: vk_mem::Allocator,
+    vma_allocator: ManuallyDrop<vk_mem::Allocator>,
     /// Semaphore used to signal that the image is ready for presentation.
     image_ready_signal: vk::Semaphore,
     /// The current presentation image index that is written to.
@@ -53,6 +58,10 @@ pub struct Driver {
     /// The window surface which is associated with this driver context.
     pub surface: vk::SurfaceKHR,
     pub sampler_cache: sampler_cache::SamplerCache,
+    /// Separate commands for compute and graphics (should really check if the device has separate queues).
+    pub graphics_commands: Commands,
+    pub compute_commands: Commands,
+    pub staging_pool: StagingPool,
 }
 
 impl Driver {
@@ -84,11 +93,23 @@ impl Driver {
             device.physical_device,
         );
         create_info.vulkan_api_version = vk::make_api_version(0, 1, 3, 0);
-        let vma_allocator = unsafe { vk_mem::Allocator::new(create_info)? };
+        let vma_allocator = unsafe { ManuallyDrop::new(vk_mem::Allocator::new(create_info)?) };
 
         let semaphore_info = vk::SemaphoreCreateInfo::default();
         let image_ready_signal = unsafe { device.device.create_semaphore(&semaphore_info, None)? };
-        let sampler_cache = SamplerCache::new(&device.device);
+        let sampler_cache = SamplerCache::new();
+
+        let staging_pool = StagingPool::new();
+        let graphics_commands = Commands::new(
+            device.graphics_queue_idx,
+            device.graphics_queue,
+            &device.device,
+        );
+        let compute_commands = Commands::new(
+            device.compute_queue_idx,
+            device.compute_queue,
+            &device.device,
+        );
 
         Ok(Self {
             device,
@@ -98,6 +119,9 @@ impl Driver {
             current_image_index: 0,
             surface,
             sampler_cache,
+            graphics_commands,
+            compute_commands,
+            staging_pool,
         })
     }
 
@@ -131,5 +155,16 @@ impl Drop for Driver {
                 .device
                 .destroy_semaphore(self.image_ready_signal, None)
         };
+
+        // Manually destroy all objects as relying on RAII for this seems too risky.
+        self.sampler_cache.destroy(&self.device.device);
+        self.staging_pool.destroy(&self.vma_allocator);
+        self.compute_commands.destroy(&self.device.device);
+        self.graphics_commands.destroy(&self.device.device);
+        // Manually dropping the VMA allocator to ensure its lifetime outlives
+        // that of the staging pool and resources.
+        unsafe { ManuallyDrop::drop(&mut self.vma_allocator) };
+        self.device.destroy();
+        self.instance.destroy();
     }
 }

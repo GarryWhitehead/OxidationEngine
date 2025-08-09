@@ -1,24 +1,26 @@
 use crate::backend;
 use ash::vk;
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 pub struct SamplerCache {
     samplers: HashMap<backend::SamplerInfo, vk::Sampler>,
-    device: Rc<ash::Device>,
 }
 
 /// A cache for Vulkan sampler objects. Allows for re-using the same samplers
 /// which fit the requested sampler parameters rather than creating new
 /// samplers on each request. Also, simplifies the destruction at the point of termination.
 impl SamplerCache {
-    pub fn new(device: &ash::Device) -> Self {
+    pub fn new() -> Self {
         Self {
             samplers: HashMap::new(),
-            device: Rc::new(device.clone()),
         }
     }
 
-    pub fn get_or_create_sampler(&mut self, info: &backend::SamplerInfo) -> vk::Sampler {
+    pub fn get_or_create_sampler(
+        &mut self,
+        info: &backend::SamplerInfo,
+        device: &ash::Device,
+    ) -> vk::Sampler {
         let sampler = self.samplers.get(info);
         if let Some(sampler) = sampler {
             return *sampler;
@@ -40,7 +42,7 @@ impl SamplerCache {
             ..Default::default()
         };
 
-        let sampler = unsafe { self.device.create_sampler(&create_info, None).unwrap() };
+        let sampler = unsafe { device.create_sampler(&create_info, None).unwrap() };
         let res = self.samplers.insert(*info, sampler);
         match res {
             None => sampler,
@@ -49,12 +51,16 @@ impl SamplerCache {
             }
         }
     }
+
+    pub fn destroy(&mut self, device: &ash::Device) {
+        for sampler in self.samplers.values() {
+            unsafe { device.destroy_sampler(*sampler, None) };
+        }
+    }
 }
 
-impl Drop for SamplerCache {
-    fn drop(&mut self) {
-        for sampler in self.samplers.values() {
-            unsafe { self.device.destroy_sampler(*sampler, None) };
-        }
+impl Default for SamplerCache {
+    fn default() -> Self {
+        Self::new()
     }
 }
